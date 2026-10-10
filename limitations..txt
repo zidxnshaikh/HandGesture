@@ -1,0 +1,90 @@
+Given time kam hai, mera honest suggestion: abhi isse mat chhedo. Ye ek well-known, commonly-accepted simplification hai — khud Murtaza wale reference project me bhi yahi approach hai. Apni report/synopsis me bas ek line "Limitations" section me likh dena: "System is optimized for right-hand gestures; left-hand thumb detection may vary." Isse pata chalega ki tumhe apne code ki cheezein samajh me hain, jo viva me achha impression dega.
+
+
+
+import cv2
+import mediapipe as mp
+
+class HandDetector:
+    def __init__(self, max_hands=2, detection_confidence=0.7):
+        self.mp_hands = mp.solutions.hands
+        self.hands = self.mp_hands.Hands(
+            max_num_hands=max_hands,
+            min_detection_confidence=detection_confidence
+        )
+        self.mp_drawing = mp.solutions.drawing_utils
+
+    def find_hands(self, frame, draw=True):
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        self.results = self.hands.process(rgb_frame)
+
+        if self.results.multi_hand_landmarks:
+            for hand_landmarks in self.results.multi_hand_landmarks:
+                if draw:
+                    self.mp_drawing.draw_landmarks(frame, hand_landmarks, self.mp_hands.HAND_CONNECTIONS)
+        return frame
+
+    def find_position(self, frame, hand_no=0):
+        landmark_list = []
+        if self.results.multi_hand_landmarks:
+            hand = self.results.multi_hand_landmarks[hand_no]
+            h, w, _ = frame.shape
+            for id, lm in enumerate(hand.landmark):
+                cx, cy = int(lm.x * w), int(lm.y * h)
+                landmark_list.append([id, cx, cy])
+        return landmark_list
+
+    def fingers_up(self, landmark_list):
+        if not landmark_list:
+            return []
+
+        tip_ids = [4, 8, 12, 16, 20]
+        fingers = []
+
+        if landmark_list[tip_ids[0]][1] > landmark_list[tip_ids[0] - 1][1]:
+            fingers.append(1)
+        else:
+            fingers.append(0)
+
+        for id in range(1, 5):
+            if landmark_list[tip_ids[id]][2] < landmark_list[tip_ids[id] - 2][2]:
+                fingers.append(1)
+            else:
+                fingers.append(0)
+
+        return fingers
+
+
+def main():
+    cap = cv2.VideoCapture(0)
+    cv2.namedWindow("Hand Landmarks", cv2.WINDOW_NORMAL)
+    detector = HandDetector()
+
+    while True:
+        success, frame = cap.read()
+        if not success:
+            break
+
+        frame = detector.find_hands(frame)
+        landmark_list = detector.find_position(frame)
+
+        if landmark_list:
+            fingers = detector.fingers_up(landmark_list)
+            print(fingers, "Count:", fingers.count(1))
+
+        cv2.imshow("Hand Landmarks", frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    cap.release()
+    cv2.destroyAllWindows()
+
+
+if __name__ == "__main__":
+    main()
+
+
+    def setup_volume_control():
+    devices = AudioUtilities.GetSpeakers()
+    interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+    return cast(interface, POINTER(IAudioEndpointVolume))
